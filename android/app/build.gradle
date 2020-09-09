@@ -26,7 +26,7 @@ apply plugin: 'kotlin-android'
 apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
 android {
-    compileSdkVersion 28
+    compileSdkVersion 30
 
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
@@ -39,8 +39,8 @@ android {
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId "com.example.flutter_build_appbundle_error"
-        minSdkVersion 16
-        targetSdkVersion 28
+        minSdkVersion 22
+        targetSdkVersion 30
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
     }
@@ -53,6 +53,32 @@ android {
         }
     }
 
+    applicationVariants.all { variant ->
+        // flutter 多 dimension 支持有 bug
+        // https://github.com/flutter/flutter/issues/52905
+        variant.assemble.doLast {
+            def apkFile = variant.outputs.first().outputFile as File
+            System.out.println("----------------------------------------------------------------------------------------")
+            System.out.println("apk file: ${apkFile.path}")
+            System.out.println("----------------------------------------------------------------------------------------")
+            def flavorNames = variant.productFlavors.collect{flavor -> flavor.name}.toList()
+            System.out.println("----------------------------------------------------------------------------------------")
+            System.out.println("flavorNames: ${flavorNames.join('-')}")
+            System.out.println("----------------------------------------------------------------------------------------")
+            def targetApkFile = new File(apkFile.parentFile.path, "app-${flavorNames.withIndex().collect{flavorName, index -> index == 0 ? flavorName : flavorName.capitalize()}.join('')}-${variant.buildType.name}.aab")
+            System.out.println("----------------------------------------------------------------------------------------")
+            System.out.println("target apk file: ${targetApkFile.path}")
+            System.out.println("----------------------------------------------------------------------------------------")
+            exec {
+                if (System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('windows')) {
+                    // https://docs.gradle.org/current/dsl/org.gradle.api.tasks.Exec.html
+                    commandLine 'cmd', '/c', "copy ${apkFile.path} ${targetApkFile.path}"
+                } else {
+                    commandLine 'bash', '-lc', "cp ${apkFile.path} ${targetApkFile.path}"
+                }
+            }
+        }
+    }
     
     flavorDimensions "signed", "env"
 
@@ -78,6 +104,8 @@ android {
         resValue "string", "app_name", "Build Appbundle Error (int)"
         }
     }
+
+    
 }
 
 flutter {
